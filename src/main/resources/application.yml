@@ -1,0 +1,10 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: soa-frontend
+  # Serve index.html at /
+  web:
+    resources:
+      static-locations: classpath:/static/

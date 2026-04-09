@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>SOA Lab — Profile</title>
+    <link rel="stylesheet" href="/js/styles.css"/>
+</head>
+<body class="profile-page">
+    <div class="card wide">
+
+        <!-- Top bar -->
+        <div class="top-bar">
+            <div>
+                <div class="badge">SOA Lab 07</div>
+                <h1>My Profile</h1>
+                <p class="subtitle">JSON Profile Service :8081 via Gateway :8082</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="logout()">Sign out</button>
+        </div>
+
+        <div id="err" class="alert error"></div>
+        <div id="ok"  class="alert success"></div>
+
+        <!-- Avatar row -->
+        <div class="avatar-row">
+            <div class="avatar-placeholder" id="avatarPlaceholder">👤</div>
+            <img id="avatarImg" class="avatar-img" style="display:none" alt="Avatar"/>
+            <div>
+                <div style="font-weight:600;font-size:0.95rem" id="displayName">Loading…</div>
+                <div style="font-size:0.8rem;color:#6b7280;margin:0.2rem 0" id="displayEmail"></div>
+                <label class="btn btn-secondary btn-sm" style="display:inline-block;margin-top:0.4rem;cursor:pointer">
+                    Upload avatar
+                    <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="uploadAvatar()"/>
+                </label>
+                <span id="uploadStatus" style="font-size:0.78rem;color:#6b7280;margin-left:0.5rem"></span>
+            </div>
+        </div>
+
+        <hr class="divider"/>
+
+        <!-- Profile form -->
+        <div class="two-col">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="name" placeholder="Alice Smith"/>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="email" placeholder="alice@example.com"/>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Bio</label>
+            <textarea id="bio" placeholder="Tell us about yourself…"></textarea>
+        </div>
+        <div class="form-group">
+            <label>Phone</label>
+            <input type="text" id="phone" placeholder="+976 9900 0000"/>
+        </div>
+
+        <button class="btn btn-primary" id="saveBtn" onclick="saveProfile()">Save changes</button>
+
+        <hr class="divider"/>
+
+        <!-- Debug panel -->
+        <div style="font-size:0.75rem;color:#9ca3af">
+            <strong>User ID:</strong> <span id="debugUserId">—</span> &nbsp;|&nbsp;
+            <strong>GET</strong> /users/<span id="debugId">?</span> &nbsp;|&nbsp;
+            <strong>PUT</strong> /users/<span id="debugId2">?</span>
+        </div>
+        <div>
+            <div style="font-size:0.75rem;color:#9ca3af;margin-top:0.5rem"><strong>JWT token:</strong></div>
+            <div class="token-box" id="tokenBox"></div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        const userId = Api.getUserId();
+
+        // Guard — not logged in
+        if (!Api.getToken() || !userId) {
+            window.location.href = '/index.html';
+        }
+
+        // Show debug info
+        document.getElementById('debugUserId').textContent = userId;
+        document.getElementById('debugId').textContent     = userId;
+        document.getElementById('debugId2').textContent    = userId;
+        document.getElementById('tokenBox').textContent    = Api.getToken() || '';
+
+        // Load profile on page load
+        async function loadProfile() {
+            const profile = await Api.getProfile(userId);
+            if (!profile) {
+                Api.showError('err', 'Could not load profile. The profile service may not have a record yet — save once to create it.');
+                return;
+            }
+            document.getElementById('name').value  = profile.name  || '';
+            document.getElementById('email').value = profile.email || '';
+            document.getElementById('bio').value   = profile.bio   || '';
+            document.getElementById('phone').value = profile.phone || '';
+            document.getElementById('displayName').textContent  = profile.name  || 'No name set';
+            document.getElementById('displayEmail').textContent = profile.email || '';
+
+            if (profile.avatar_url) {
+                document.getElementById('avatarImg').src = profile.avatar_url;
+                document.getElementById('avatarImg').style.display = 'block';
+                document.getElementById('avatarPlaceholder').style.display = 'none';
+            }
+        }
+
+        async function saveProfile() {
+            Api.hideError('err');
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.textContent = 'Saving…';
+
+            const data = {
+                name:  document.getElementById('name').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                bio:   document.getElementById('bio').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+            };
+
+            const res = await Api.updateProfile(userId, data);
+
+            btn.disabled = false;
+            btn.textContent = 'Save changes';
+
+            if (res && res.ok) {
+                Api.showSuccess('ok', 'Profile saved successfully.');
+                document.getElementById('displayName').textContent  = data.name  || 'No name set';
+                document.getElementById('displayEmail').textContent = data.email || '';
+                setTimeout(() => Api.hideError('ok'), 3000);
+            } else {
+                Api.showError('err', 'Failed to save profile. Check the console.');
+            }
+        }
+
+        async function uploadAvatar() {
+            const file = document.getElementById('avatarFile').files[0];
+            if (!file) return;
+
+            document.getElementById('uploadStatus').textContent = 'Uploading…';
+
+            const res = await Api.uploadAvatar(file);
+
+            if (res && res.ok && res.avatar_url) {
+                document.getElementById('avatarImg').src = res.avatar_url;
+                document.getElementById('avatarImg').style.display = 'block';
+                document.getElementById('avatarPlaceholder').style.display = 'none';
+                document.getElementById('uploadStatus').textContent = 'Uploaded!';
+                setTimeout(() => document.getElementById('uploadStatus').textContent = '', 2000);
+            } else {
+                document.getElementById('uploadStatus').textContent = 'Upload failed.';
+                Api.showError('err', 'Avatar upload failed. File Manager may not be running.');
+            }
+        }
+
+        function logout() {
+            Api.clearToken();
+            window.location.href = '/index.html';
+        }
+
+        loadProfile();
+    </script>
+</body>
+</html>

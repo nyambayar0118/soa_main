@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>SOA Lab — Login</title>
+    <link rel="stylesheet" href="/js/styles.css"/>
+</head>
+<body>
+    <div class="card">
+        <div class="badge">SOA Lab 07</div>
+        <h1>Sign in</h1>
+        <p class="subtitle">Gateway → SOAP Auth → JWT</p>
+
+        <div id="err" class="alert error"></div>
+        <div id="ok"  class="alert success"></div>
+
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="username" placeholder="alice" autocomplete="username"/>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password"/>
+        </div>
+
+        <button class="btn btn-primary" id="loginBtn" onclick="login()">Sign in</button>
+
+        <div class="link-row">
+            No account? <a href="/register.html">Register</a>
+        </div>
+
+        <hr class="divider"/>
+        <div style="font-size:0.75rem;color:#9ca3af">
+            <strong>Endpoint:</strong> POST http://localhost:8082/auth/login<br/>
+            <strong>Routed to:</strong> SOAP Auth :8080 → returns JWT
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        // If already logged in, go to profile
+        if (Api.getToken() && Api.getUserId()) {
+            window.location.href = '/profile.html';
+        }
+
+        document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+        async function login() {
+            Api.hideError('err');
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('loginBtn');
+
+            if (!username || !password) {
+                Api.showError('err', 'Please fill in all fields.');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Signing in…';
+
+            const res = await Api.login(username, password);
+
+            btn.disabled = false;
+            btn.textContent = 'Sign in';
+
+            if (res && res.ok) {
+                Api.showSuccess('ok', 'Login successful — redirecting…');
+                setTimeout(() => window.location.href = '/profile.html', 800);
+            } else {
+                Api.showError('err', (res && res.message) || 'Invalid credentials.');
+            }
+        }
+    </script>
+</body>
+</html>
