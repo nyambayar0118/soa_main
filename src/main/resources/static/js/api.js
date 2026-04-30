@@ -1,4 +1,4 @@
-const GATEWAY = 'http://localhost:8082';
+const GATEWAY = '';
 
 const Api = {
     // ── Token storage ────────────────────────────────────────────
